@@ -11,7 +11,6 @@ namespace ConsoleApplication1
     class GetPanNumber
     {
         public static byte[] selectAid = { (byte)0x32, (byte)0x50, (byte)0x041, (byte)0x59, (byte)0x2E, (byte)0x53, (byte)0x59, (byte)0x53, (byte)0x2E, (byte)0x44, (byte)0x44, (byte)0x46, (byte)0x30, (byte)0x31 };
-        public static byte[] getProcessingOptions = { (byte)0x80, (byte)0xA8, (byte)0x00, (byte)0x00, (byte)0x02, (byte)0x83, (byte)0x00, (byte)0x00 };
         public static byte[] readMasterRecord ={(byte)0x00, (byte)0xB2, (byte)0x01, (byte)0x14, (byte)0x00};
         public static byte[] selectMCAID = {(byte)0xA0, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x04, (byte)0x10, (byte)0x10};
         public static byte[] selectVisaAID = {(byte)0xA0, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x03, (byte)0x10, (byte)0x10};
@@ -41,14 +40,14 @@ namespace ConsoleApplication1
 
             string panNumber = getPanNumber1(context, readerName);
 
-            if (panNumber == null || panNumber.Length == 0)
+            if (panNumber == null || panNumber.Length < 1)
             {
                 Console.WriteLine("error");
                 Console.ReadKey();
                 return;
             }
 
-            Console.WriteLine("Pan Number: " + panNumber);
+            Console.WriteLine("Pan Number: {0}", panNumber);
             Console.ReadKey();
 
 
