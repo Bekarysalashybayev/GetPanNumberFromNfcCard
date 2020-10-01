@@ -27,7 +27,7 @@ namespace ConsoleApplication1
 
             if (readerNames == null || readerNames.Length < 1)
             {
-                Console.WriteLine("You need at least one reader in order to run this example.");
+                Console.WriteLine("You need at least one reader in order to run this code.");
                 Console.ReadKey();
                 return;
             }
@@ -76,39 +76,20 @@ namespace ConsoleApplication1
                 Data = selectAid
             };
 
-
-            sc = rfidReader.BeginTransaction();
-            if (sc != SCardError.Success)
-            {
-                return null;
-            }
-
             var receivePci = new SCardPCI();
             var sendPci = SCardPCI.GetPci(rfidReader.ActiveProtocol);
-
             var receiveBuffer = new byte[256];
-            var command = apdu.ToArray();
-
-            sc = rfidReader.Transmit(
-                sendPci,
-                command,
-                receivePci,
-                ref receiveBuffer);
-
-            if (sc != SCardError.Success)
-            {
-                return null;
-            }
-
-            var responseApdu = new ResponseApdu(receiveBuffer, IsoCase.Case2Short, rfidReader.ActiveProtocol);
-
-            if (!responseApdu.HasData)
-            {
-                return null;
-            }
+            var responseApdu = new ResponseApdu(receiveBuffer, IsoCase.Case4Short, rfidReader.ActiveProtocol);
+            
 
             String aid;
-            byte[] aidByte = (byte[])responseApdu.GetData();
+            byte[] aidByte = sendRequest(rfidReader, sc, receivePci, sendPci, apdu, responseApdu, IsoCase.Case4Short);
+           
+            if (aidByte == null)
+            {
+                return null;
+            }
+
             String pAid = ByteArrayToHexString(aidByte);
             int aidInd = pAid.LastIndexOf("4F07");
             aid = pAid.Substring(aidInd + 4, 14);
@@ -125,6 +106,7 @@ namespace ConsoleApplication1
                 readRecord = selectVisaAID;
                 x = 0x1C;
             }
+
             //----------------selectMCAID---------------------------
 
             apdu = new CommandApdu(IsoCase.Case4Short, rfidReader.ActiveProtocol)
@@ -137,38 +119,12 @@ namespace ConsoleApplication1
                 Data = readRecord
             };
 
-
-            sc = rfidReader.BeginTransaction();
-            if (sc != SCardError.Success)
+            byte[] selectTAypeCard = sendRequest(rfidReader, sc, receivePci, sendPci, apdu, responseApdu, IsoCase.Case4Short);
+            if (selectTAypeCard == null)
             {
                 return null;
             }
-
-            receivePci = new SCardPCI();
-            sendPci = SCardPCI.GetPci(rfidReader.ActiveProtocol);
-
-            receiveBuffer = new byte[256];
-            command = apdu.ToArray();
-            sc = rfidReader.Transmit(
-                sendPci,
-                command,
-                receivePci,
-                ref receiveBuffer);
-
-            if (sc != SCardError.Success)
-            {
-                return null;
-            }
-
-            responseApdu = new ResponseApdu(receiveBuffer, IsoCase.Case2Short, rfidReader.ActiveProtocol);
-
-            if (!responseApdu.HasData)
-            {
-                return null;
-            }
-
             //------------------------ end ------------------------------
-
 
             apdu = new CommandApdu(IsoCase.Case2Short, rfidReader.ActiveProtocol)
             {
@@ -179,7 +135,26 @@ namespace ConsoleApplication1
                 Le = 0x00
             };
 
+            String pan;
+            byte[] a = sendRequest(rfidReader, sc, receivePci, sendPci, apdu, responseApdu, IsoCase.Case2Short);   //(byte[])responseApdu.GetData();
 
+            if (a == null)
+            {
+                return null;
+            }
+            String p = ByteArrayToHexString(a);
+            int panInd = p.LastIndexOf("5A08");
+            pan = p.Substring(panInd + 4, 16);
+
+            rfidReader.EndTransaction(SCardReaderDisposition.Leave);
+            rfidReader.Disconnect(SCardReaderDisposition.Reset);
+
+            return pan;
+
+        }
+
+        private static byte[] sendRequest(SCardReader rfidReader, SCardError sc, SCardPCI receivePci,
+                                           IntPtr sendPci, CommandApdu apdu, ResponseApdu responseApdu, IsoCase isoCase) {
             sc = rfidReader.BeginTransaction();
             if (sc != SCardError.Success)
             {
@@ -189,8 +164,8 @@ namespace ConsoleApplication1
             receivePci = new SCardPCI();
             sendPci = SCardPCI.GetPci(rfidReader.ActiveProtocol);
 
-            receiveBuffer = new byte[256];
-            command = apdu.ToArray();
+            var receiveBuffer = new byte[256];
+            var command = apdu.ToArray();
 
             sc = rfidReader.Transmit(
                 sendPci,
@@ -203,24 +178,14 @@ namespace ConsoleApplication1
                 return null;
             }
 
-            responseApdu = new ResponseApdu(receiveBuffer, IsoCase.Case2Short, rfidReader.ActiveProtocol);
+            responseApdu = new ResponseApdu(receiveBuffer, isoCase, rfidReader.ActiveProtocol);
 
             if (!responseApdu.HasData)
             {
                 return null;
             }
 
-            String pan;
-            byte[] a = (byte[])responseApdu.GetData();
-            String p = ByteArrayToHexString(a);
-            int panInd = p.LastIndexOf("5A08");
-            pan = p.Substring(panInd + 4, 16);
-
-            rfidReader.EndTransaction(SCardReaderDisposition.Leave);
-            rfidReader.Disconnect(SCardReaderDisposition.Reset);
-
-            return pan;
-
+            return (byte[])responseApdu.GetData();
         }
 
         private static string ByteArrayToHexString(byte[] inarray)
